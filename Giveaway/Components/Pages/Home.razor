@@ -1,0 +1,108 @@
+﻿@page "/"
+@using Giveaway.BusinessLogic.GiveawayEntrySources
+@using Giveaway.BusinessLogic.PrizeSource
+@using System.Timers
+@inject IGiveawayEntriesProvider GiveawayEntriesProvider 
+@inject IPrizeProvider PrizeProvider 
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+
+<PageTitle>Giveaway</PageTitle>
+
+<MudStack>
+    <MudText Align="Align.Center" Typo="Typo.h1">.NET Thames Valley Giveaway</MudText>
+
+    <MudGrid Justify="Justify.Center">
+        @foreach (var t in Entries)
+        {
+            var entry = t;
+            <MudItem xs="2">
+                <MudPaper Style="@entry.Style" Class="d-flex align-center justify-center mud-width-full py-8">
+                    <MudStack>
+                        <MudText Align="Align.Center">@entry.Name</MudText>
+                        <MudText Align="Align.Center">@entry.Prize</MudText>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+
+    <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="StartHotReload" Disabled="@(_hotReloadEnabled || PrizeCounter > 0)">Start Hot Reload</MudButton>
+    <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="StopHotReload" Disabled="@(_hotReloadEnabled == false)">Stop Hot Reload</MudButton>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="FindWinner" Disabled="@(PrizeCounter >= Prizes.Count)">Find Winner</MudButton>
+
+</MudStack>
+
+
+@code
+{
+    private bool _hotReloadEnabled = false;
+    private Timer? _timer;
+    private IList<BusinessLogic.GiveawayEntry> Entries { get; set; } = [];
+    private IList<string> Prizes { get; set; } = [];
+    private int PrizeCounter { get; set; }
+
+    private void StopHotReload()
+    {
+        _hotReloadEnabled = false;
+        _timer?.Dispose();
+    }
+
+    private void StartHotReload()
+    {
+        if (_hotReloadEnabled == false)
+        {
+            _hotReloadEnabled = true;
+
+            _timer = new Timer(TimeSpan.FromSeconds(10));
+            _timer.Elapsed += async (sender, e) =>
+            {
+                Entries = await GiveawayEntriesProvider.GetEntries();
+                await InvokeAsync(StateHasChanged);
+            };
+            _timer.AutoReset = true;
+            _timer.Enabled = true;
+        }
+    }
+
+    private async Task FindWinner()
+    {
+        StopHotReload();
+        BusinessLogic.GiveawayEntry? previous = null;
+        var maxSelections = 5;
+        PrizeCounter++;
+
+        for (var index = 0; index <= maxSelections; index++)
+        {
+            var nonWinners = Entries.Where(x => !x.Selected && string.IsNullOrWhiteSpace(x.Prize)).ToList();
+            var nextSelection = nonWinners[Random.Shared.Next(nonWinners.Count)];
+            var nextItem = Entries.First(x => x.Email == nextSelection.Email);
+
+            if (previous != null)
+            {
+                previous.Selected = false;
+            }
+
+            if (index == maxSelections)
+            {
+                nextItem.Prize = Prizes[PrizeCounter - 1];
+            }
+            else
+            {
+                nextItem.Selected = true;
+            }
+
+            await InvokeAsync(StateHasChanged);
+            await Task.Delay(500);
+            previous = nextItem;
+        }
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        Entries = await GiveawayEntriesProvider.GetEntries();
+        Prizes = PrizeProvider.GetPrizes();
+        await base.OnInitializedAsync();
+    }
+}
