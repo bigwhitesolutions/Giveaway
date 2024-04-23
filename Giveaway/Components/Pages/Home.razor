@@ -3,13 +3,15 @@
 @using Giveaway.BusinessLogic.PrizeSource
 @using System.Timers
 @inject IGiveawayEntriesProvider GiveawayEntriesProvider 
-@inject IPrizeProvider PrizeProvider 
+@inject IPrizeProvider PrizeProvider
+@inject ILogger<Home> Logger
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 
 
 <PageTitle>Giveaway</PageTitle>
 
 <MudStack>
+   
     <MudText Align="Align.Center" Typo="Typo.h1">.NET Thames Valley Giveaway</MudText>
 
     <MudGrid Justify="Justify.Center">
@@ -27,10 +29,11 @@
         }
     </MudGrid>
 
-    <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="StartHotReload" Disabled="@(_hotReloadEnabled || PrizeCounter > 0)">Start Hot Reload</MudButton>
-    <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="StopHotReload" Disabled="@(_hotReloadEnabled == false)">Stop Hot Reload</MudButton>
     <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="FindWinner" Disabled="@(PrizeCounter >= Prizes.Count)">Find Winner</MudButton>
-
+    <MudStack Row="true" Justify="Justify.FlexEnd" AlignItems="AlignItems.End">
+        <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.PlayArrow" Color="Color.Secondary" OnClick="StartHotReload" Disabled="@(_hotReloadEnabled || PrizeCounter > 0)"></MudButton>
+        <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Stop" Color="Color.Secondary" OnClick="StopHotReload" Disabled="@(_hotReloadEnabled == false)"></MudButton>
+    </MudStack>
 </MudStack>
 
 
@@ -69,7 +72,7 @@
     {
         StopHotReload();
         BusinessLogic.GiveawayEntry? previous = null;
-        var maxSelections = 5;
+        var maxSelections = 15;
         PrizeCounter++;
 
         for (var index = 0; index <= maxSelections; index++)
@@ -86,6 +89,7 @@
             if (index == maxSelections)
             {
                 nextItem.Prize = Prizes[PrizeCounter - 1];
+                Logger.LogInformation("Winner! {Name} {Email} {Prize}", nextItem.Name, nextItem.Email, nextItem.Prize);
             }
             else
             {

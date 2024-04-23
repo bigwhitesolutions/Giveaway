@@ -2,6 +2,7 @@ using Giveaway.BusinessLogic.GiveawayEntrySources;
 using Giveaway.BusinessLogic.PrizeSource;
 using Giveaway.Components;
 using MudBlazor.Services;
+using NReco.Logging.File;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +17,11 @@ builder.Services.AddSingleton<IGiveawayEntriesProvider>(_ =>
         builder.Configuration["Google:ClientSecret"]!,
         "18bp-jHCOMd3RdS9fJj6kZVN-rZ7w27gNE88nkGm3vR8"
     ));
+
+builder.Services.AddLogging(loggingBuilder => {
+    var loggingSection = builder.Configuration.GetSection("Logging");
+    loggingBuilder.AddFile(loggingSection);
+});
 
 builder.Services.AddTransient<IPrizeProvider, InMemoryPrizeProvider>();
 
